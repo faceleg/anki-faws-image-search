@@ -9,8 +9,11 @@ import requests
 from bs4 import BeautifulSoup
 import concurrent.futures
 from anki.utils import checksum
-from .logging import logger
+from io import BytesIO
+from typing import Tuple
+from math import ceil
 
+from .logging import logger
 
 class QueryResult(NamedTuple):
     """
@@ -163,8 +166,6 @@ class BingScraper(Scraper):
 
         This function **mutates** `result` and also returns it.
         """
-        # Check README for why this import is here.
-        from PIL import UnidentifiedImageError
         image_urls = re.findall(BingScraper.IMAGE_URL_REGEX, html)
         num_processed = 0
         if len(image_urls) == 0:
@@ -190,10 +191,8 @@ class BingScraper(Scraper):
                 continue
 
             try:
-                buf = _maybe_resize_image(req.content, result.width,
+                buf = _maybe_resize_image(io.BytesIO(req.content), result.width,
                                           result.height)
-            except UnidentifiedImageError:
-                continue
             except UnicodeError as e:
                 # UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)
                 # https://bugs.python.org/issue32958
@@ -206,30 +205,42 @@ class BingScraper(Scraper):
         return result
 
 
-def _maybe_resize_image(
-        img_data: io.BytesIO,
-        user_width: int,
-        user_height: int) -> io.BytesIO:
-    # Check README for why this import is here.
-    from PIL import Image
-
+def _maybe_resize_image(image_data: BytesIO, user_width: int, user_height: int) -> BytesIO:
     should_resize = user_width > 0 or user_height > 0
 
-    # GIFs can't be resized, again according to the last dude, I'll take
-    # his word for it.
-    img_io = io.BytesIO(img_data)
-    im = Image.open(img_io)
-    is_gif = getattr(im, 'n_frames', 1) != 1
-    if not should_resize or is_gif:
-        return img_io
+    if should_resize:
+        img_data = BytesIO(image_data.read())
+        img_data.seek(0)
+        img = Image.open(img_data)
+        width, height = img.size
+        if user_width > 0 and user_height > 0:
+            img = resize_proportional(img, user_width, user_height)
+        elif user_width > 0:
+            img = resize_proportional(img, user_width, height)
+        elif user_height > 0:
+            img = resize_proportional(img, width, user_height)
+        img_data_resized = BytesIO()
+        img.save(img_data_resized, format="JPEG")
+        img_data_resized.seek(0)
+        # Now, you can use img_data_resized for whatever you want
+        print("Image resized")
+        return img_data_resized
+    else:
+        # No need to resize
+        print("No need to resize")
+        return image_data
 
-    old_width, old_height = im.width, im.height
-    new_width, new_height = old_width, old_height
-    if user_width > 0:
-        new_width = min(new_width, user_width)
-    if user_height > 0:
-        new_height = min(new_height, user_height)
-    im.thumbnail((new_width, new_height))
-    buf = io.BytesIO()
-    im.save(buf, format=im.format, optimize=True)
-    return buf
+def resize_proportional(img, new_width, new_height):
+    width, height = img.size
+    ratio = min(new_width / width, new_height / height)
+    return img.resize((ceil(width * ratio), ceil(height * ratio)), Image.ANTIALIAS)
+
+def image_resize(image_data: BytesIO, width: int, height: int) -> BytesIO:
+    img_data = BytesIO(image_data.read())
+    img_data.seek(0)
+    img = Image.open(img_data)
+    img.thumbnail((width, height))
+    img_resized = BytesIO()
+    img.save(img_resized, format="JPEG")
+    img_resized.seek(0)
+    return img_resized
