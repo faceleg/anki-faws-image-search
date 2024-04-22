@@ -9,13 +9,12 @@ from aqt import gui_hooks
 import sys
 
 # See main.ui
-from .designer.main import Ui_Dialog
+from .designer.dialog_ui import Ui_FawsDialog
 from .ui_helpers import ConfigDefaults, ConfigKeys, COLUMN_LABELS, OverwriteValues
 from .ui_helpers import make_target_field_select, make_dimension_spin_box, make_overwrite_select, make_result_count_box, serialize_config_from_ui
 from .scraper import QueryResult, BingScraper, strip_html_clozes
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "vendor"))
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "_vendor"))
 
 def open_add_images_dialog(browser: aqt.browser.Browser) -> None:
     """
@@ -32,7 +31,7 @@ def open_add_images_dialog(browser: aqt.browser.Browser) -> None:
 
     # Set up the dialog using Qt, importing a UI config.
     dialog = QDialog(browser)
-    form = Ui_Dialog()
+    form = Ui_FawsDialog()
     form.setupUi(dialog)
     config = mw.addonManager.getConfig(__name__)
 

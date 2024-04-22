@@ -59,14 +59,7 @@ quality of images but a more maintainable way of accessing the images.
 
 ## Installation from source
 
-See [this
-thread](https://forums.ankiweb.net/t/add-support-for-dependencies-in-addons/24302/2).
-
-```
-pip3 install Pillow -t vendor
-```
-
-After that, move this directory to the Anki add-ons folder. This is covered in
+Copy the contents of this directory to your Anki add-ons folder. This is covered in
 the official documentation.
 
 ## Report a bug

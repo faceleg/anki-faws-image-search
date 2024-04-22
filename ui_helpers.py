@@ -1,6 +1,5 @@
 from aqt.qt import *
 
-
 class OverwriteValues:
     """
     Possible values for the overwrite config.
